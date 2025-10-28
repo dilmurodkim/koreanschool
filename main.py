@@ -1,7 +1,7 @@
 import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.utils.executor import start_webhook
 from aiogram.dispatcher.filters import Text
+from aiogram.utils.executor import start_webhook
 from dotenv import load_dotenv
 
 # .env faylni yuklash
@@ -11,13 +11,13 @@ load_dotenv()
 TOKEN = os.getenv("TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 CARD_NUMBER = os.getenv("CARD_NUMBER")
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
-WEBAPP_HOST = os.getenv("WEBAPP_HOST", "0.0.0.0")
-WEBAPP_PORT = int(os.getenv("WEBAPP_PORT", 8080))
 
-# Webhook yo‘li
+# Render uchun avtomatik sozlamalar
+WEBAPP_HOST = os.getenv("WEBAPP_HOST", "0.0.0.0")
+WEBAPP_PORT = int(os.getenv("PORT", 10000))  # Render PORT muhit o‘zgaruvchisidan oladi
+WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")  # majburiy emas, agar berilmasa avtomatik aniqlanadi
 WEBHOOK_PATH = f"/webhook/{TOKEN}"
-WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}" if WEBHOOK_HOST else None
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
@@ -37,8 +37,7 @@ async def start(message: types.Message):
         "📲 Darsga yozilish uchun pastdagi tugmani bosing 👇"
     )
     keyboard = types.InlineKeyboardMarkup()
-    button = types.InlineKeyboardButton(text="✏️ Darsga yozilaman", callback_data="yozilish")
-    keyboard.add(button)
+    keyboard.add(types.InlineKeyboardButton(text="✏️ Darsga yozilaman", callback_data="yozilish"))
     await message.answer(text, parse_mode="Markdown", reply_markup=keyboard)
 
 # --- Foydalanuvchi yoziladi ---
@@ -89,12 +88,18 @@ async def rasm_qabul(message: types.Message):
 
 # --- Webhook funksiyalari ---
 async def on_startup(dp):
+    global WEBHOOK_URL
+    if not WEBHOOK_URL:
+        # Render domeni avtomatik aniqlanadi
+        render_url = os.getenv("RENDER_EXTERNAL_URL")
+        if render_url:
+            WEBHOOK_URL = f"{render_url}{WEBHOOK_PATH}"
     await bot.set_webhook(WEBHOOK_URL)
-    print(f"Webhook ulandi: {WEBHOOK_URL}")
+    print(f"✅ Webhook o‘rnatildi: {WEBHOOK_URL}")
 
 async def on_shutdown(dp):
     await bot.delete_webhook()
-    print("Webhook o‘chirildi")
+    print("🛑 Webhook o‘chirildi")
 
 if __name__ == "__main__":
     start_webhook(
